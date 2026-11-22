@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>DayAI — Sog'lom Hayot Mini Ilovasi</title>
+    <!-- Telegram WebApp SDK -->
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Inter Font -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                    },
+                    colors: {
+                        brand: {
+                            50: '#f0fdf4',
+                            100: '#dcfce7',
+                            500: '#10b981',
+                            600: '#059669',
+                            700: '#047857',
+                        },
+                        accent: {
+                            50: '#eff6ff',
+                            500: '#3b82f6',
+                            600: '#2563eb',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+            -webkit-tap-highlight-color: transparent;
+            user-select: none;
+        }
+        /* Custom scrollbar hiding for clean mobile look */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+        /* Scanning laser animation */
+        @keyframes scanLine {
+            0% { top: 0%; opacity: 0; }
+            15% { opacity: 1; }
+            85% { opacity: 1; }
+            100% { top: 100%; opacity: 0; }
+        }
+        .animate-scan {
+            animation: scanLine 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+        }
+        /* Smooth fade in */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(8px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+    </style>
+</head>
+<body class="flex justify-center min-h-screen bg-slate-100 text-slate-800">
+
+    <!-- Mobile App Shell (390px max width on desktop, full width on mobile) -->
+    <div id="app-container" class="w-full max-w-[390px] bg-[#F8FAFC] min-h-screen flex flex-col relative shadow-2xl overflow-x-hidden">
+        
+        <!-- Top Header -->
+        <header class="sticky top-0 z-30 bg-white/85 backdrop-blur-md border-b border-slate-100 px-4 py-3 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+                <!-- DayAI SVG Logo Icon -->
+                <div class="w-9 h-9 rounded-xl bg-gradient-to-tr from-emerald-500 to-sky-500 flex items-center justify-center text-white shadow-sm">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M12 2a10 10 0 1 0 10 10H12V2z"/>
+                        <path d="M12 2a10 10 0 0 1 10 10"/>
+                        <circle cx="12" cy="12" r="3" fill="currentColor"/>
+                    </svg>
+                </div>
+                <div>
+                    <div class="flex items-center gap-1.5">
+                        <h1 class="font-extrabold text-lg tracking-tight text-slate-900 leading-none">DayAI</h1>
+                        <span class="text-[10px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded-md bg-emerald-100 text-emerald-700">Free</span>
+                    </div>
+                    <p id="user-greeting" class="text-xs text-slate-500 font-medium mt-0.5">Salom, Sog'lom kun!</p>
+                </div>
+            </div>
+
+            <!-- Streak Badge -->
+            <div class="flex items-center gap-1 bg-orange-50 border border-orange-100 px-2.5 py-1.5 rounded-full shadow-xs">
+                <span class="text-sm leading-none">🔥</span>
+                <span id="streak-count" class="text-xs font-bold text-orange-600">3 kun</span>
+            </div>
+        </header>
+
+        <!-- Toast Notification Banner (Replaces alert) -->
+        <div id="toast-banner" class="fixed top-16 left-1/2 -translate-x-1/2 z-50 w-[90%] max-w-[350px] pointer-events-none opacity-0 transition-all duration-300 transform -translate-y-2">
+            <div class="bg-slate-900/95 backdrop-blur-md text-white px-4 py-3 rounded-2xl shadow-xl flex items-center gap-2.5 text-xs font-medium">
+                <span id="toast-icon" class="text-base">✅</span>
+                <span id="toast-message">Muvaffaqiyatli saqlandi!</span>
+            </div>
+        </div>
+
+        <!-- Main Scrollable Content Area -->
+        <main class="flex-1 px-4 pt-4 pb-24 overflow-y-auto no-scrollbar">
+
+            <!-- ========================================== -->
+            <!-- TAB 1: TAHLIL (MEAL PHOTO ANALYZER)        -->
+            <!-- ========================================== -->
+            <section id="tab-tahlil" class="space-y-4 animate-fade-in">
+                
+                <!-- Upload / Camera Card -->
+                <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-3">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">Ovqatni tahlil qilish</h2>
+                            <p class="text-xs text-slate-500">Nonushta yoki taom rasmini yuklang</p>
+                        </div>
+                        <span class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                            <i data-lucide="sparkles" class="w-4 h-4"></i>
+                        </span>
+                    </div>
+
+                    <!-- Hidden File Input -->
+                    <input type="file" id="meal-file-input" accept="image/*" capture="environment" class="hidden" onchange="handleImageUpload(event)">
+
+                    <!-- Interactive Drop/Tap Zone -->
+                    <div id="upload-zone" onclick="document.getElementById('meal-file-input').click()" class="relative group cursor-pointer rounded-2xl border-2 border-dashed border-emerald-200 bg-gradient-to-b from-emerald-50/50 to-sky-50/40 hover:border-emerald-400 transition-all p-6 flex flex-col items-center justify-center text-center overflow-hidden min-h-[175px]">
+                        
+                        <!-- Default Prompt State -->
+                        <div id="upload-placeholder" class="flex flex-col items-center">
+                            <div class="w-14 h-14 rounded-2xl bg-white shadow-md text-emerald-600 flex items-center justify-center mb-3 group-hover:scale-105 transition-transform">
+                                <i data-lucide="camera" class="w-7 h-7"></i>
+                            </div>
+                            <span class="text-sm font-bold text-slate-800">Rasmga olish yoki tanlash</span>
+                            <span class="text-xs text-slate-500 mt-1 max-w-[220px]">AI taom tarkibi, kaloriyasi va foydali jihatlarini aniqlaydi</span>
+                        </div>
+
+                        <!-- Preview Image Container (Hidden initially) -->
+                        <div id="preview-container" class="hidden w-full h-44 relative rounded-xl overflow-hidden">
+                            <img id="meal-preview-img" src="" alt="Tanlangan ovqat" class="w-full h-full object-cover">
+                            <!-- Scanning Overlay -->
+                            <div id="scanning-overlay" class="hidden absolute inset-0 bg-slate-900/45 backdrop-blur-[2px] flex flex-col items-center justify-center text-white">
+                                <div class="absolute left-0 right-0 h-1 bg-gradient-to-r from-transparent via-emerald-400 to-transparent shadow-[0_0_12px_#34d399] animate-scan"></div>
+                                <div class="w-9 h-9 border-2 border-emerald-400 border-t-transparent rounded-full animate-spin mb-2"></div>
+                                <span class="text-xs font-semibold tracking-wide">Rasm tahlil qilinmoqda...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Quick Demo Presets -->
+                    <div class="mt-4">
+                        <p class="text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-2">Tezkor sinov (Tayyor nonushtalar):</p>
+                        <div class="flex gap-2 overflow-x-auto no-scrollbar pb-1">
+                            <button onclick="runPresetAnalysis('avocado_toast')" class="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 hover:border-emerald-200 text-xs font-medium text-slate-700 transition-colors">
+                                <span>🥑</span> Tuxum va avokado tosti
+                            </button>
+                            <button onclick="runPresetAnalysis('oatmeal')" class="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 hover:border-emerald-200 text-xs font-medium text-slate-700 transition-colors">
+                                <span>🥣</span> Suli bo'tqasi va mevalar
+                            </button>
+                            <button onclick="runPresetAnalysis('cottage_cheese')" class="shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl bg-slate-50 hover:bg-emerald-50 border border-slate-200/80 hover:border-emerald-200 text-xs font-medium text-slate-700 transition-colors">
+                                <span>🍯</span> Tvorog va asal
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analysis Result Card (Shown after upload/preset) -->
+                <div id="analysis-result-card" class="hidden bg-white rounded-3xl p-4 shadow-md border border-slate-100 space-y-4 animate-fade-in">
+                    <!-- Meal Header -->
+                    <div class="flex items-start justify-between border-b border-slate-100 pb-3">
+                        <div>
+                            <span id="res-category" class="inline-block text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-md bg-sky-100 text-sky-700 mb-1">Nonushta</span>
+                            <h3 id="res-meal-name" class="text-base font-extrabold text-slate-900">Tuxum va avokado tosti</h3>
+                            <p id="res-portion" class="text-xs text-slate-500 mt-0.5">Taxminiy porsiya: ~260 g</p>
+                        </div>
+                        <button onclick="resetAnalyzer()" class="p-1.5 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200" title="Yopish">
+                            <i data-lucide="x" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+
+                    <!-- 2x2 Macro & Calorie Grid (Inspired by reference image) -->
+                    <div class="grid grid-cols-2 gap-2.5">
+                        <div class="bg-orange-50/70 border border-orange-100/80 rounded-2xl p-3">
+                            <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                                <span>🔥</span> Kaloriya
+                            </div>
+                            <div class="mt-1 flex items-baseline gap-1">
+                                <span id="res-kcal" class="text-xl font-extrabold text-slate-900">420</span>
+                                <span class="text-xs font-semibold text-slate-500">kkal</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-amber-50/70 border border-amber-100/80 rounded-2xl p-3">
+                            <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                                <span>🌾</span> Uglevod
+                            </div>
+                            <div class="mt-1 flex items-baseline gap-1">
+                                <span id="res-carbs" class="text-xl font-extrabold text-slate-900">34</span>
+                                <span class="text-xs font-semibold text-slate-500">g</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-rose-50/70 border border-rose-100/80 rounded-2xl p-3">
+                            <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                                <span>🥩</span> Oqsil
+                            </div>
+                            <div class="mt-1 flex items-baseline gap-1">
+                                <span id="res-protein" class="text-xl font-extrabold text-slate-900">21</span>
+                                <span class="text-xs font-semibold text-slate-500">g</span>
+                            </div>
+                        </div>
+
+                        <div class="bg-sky-50/70 border border-sky-100/80 rounded-2xl p-3">
+                            <div class="flex items-center gap-1.5 text-xs font-semibold text-slate-600">
+                                <span>🥑</span> Yog'
+                            </div>
+                            <div class="mt-1 flex items-baseline gap-1">
+                                <span id="res-fat" class="text-xl font-extrabold text-slate-900">22</span>
+                                <span class="text-xs font-semibold text-slate-500">g</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Health Score Bar -->
+                    <div class="bg-slate-50 rounded-2xl p-3 border border-slate-100">
+                        <div class="flex items-center justify-between mb-1.5">
+                            <span class="text-xs font-bold text-slate-700">Sog'lomlik bahosi</span>
+                            <span id="res-score-text" class="text-xs font-extrabold text-emerald-600">9.0 / 10</span>
+                        </div>
+                        <div class="w-full h-2.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div id="res-score-bar" class="h-full bg-gradient-to-r from-amber-400 via-emerald-400 to-emerald-600 rounded-full transition-all duration-500" style="width: 90%"></div>
+                        </div>
+                    </div>
+
+                    <!-- Foydali taraflari (Health Benefits) -->
+                    <div>
+                        <h4 class="text-xs font-bold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+                            <i data-lucide="heart-pulse" class="w-3.5 h-3.5 text-emerald-600"></i>
+                            Foydali taraflari
+                        </h4>
+                        <ul id="res-benefits" class="space-y-1.5 text-xs text-slate-700 bg-emerald-50/60 border border-emerald-100 rounded-2xl p-3">
+                            <!-- Populated dynamically -->
+                        </ul>
+                    </div>
+
+                    <!-- Add to Daily Log Button -->
+                    <button id="add-meal-btn" onclick="addAnalyzedMealToLog()" class="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 hover:from-emerald-700 hover:to-emerald-600 active:scale-[0.99] text-white font-bold text-sm shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-2 transition-all">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        <span>Kunlik hisobga qo'shish</span>
+                    </button>
+                </div>
+
+            </section>
+
+            <!-- ========================================== -->
+            <!-- TAB 2: KUNLIK TARTIB (DAILY ROUTINE)       -->
+            <!-- ========================================== -->
+            <section id="tab-tartib" class="hidden space-y-4 animate-fade-in">
+                
+                <!-- Water Tracker Widget -->
+                <div class="bg-gradient-to-br from-sky-500 to-blue-600 rounded-3xl p-4 text-white shadow-lg shadow-sky-500/20">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <span class="text-[11px] font-semibold uppercase tracking-wider text-sky-100">Kunlik suv balansi</span>
+                            <div class="flex items-baseline gap-1.5 mt-0.5">
+                                <span id="water-current" class="text-2xl font-extrabold">1.2</span>
+                                <span class="text-sm font-medium text-sky-100">/ 2.0 L</span>
+                            </div>
+                        </div>
+                        <button onclick="addWater(0.25)" class="bg-white text-blue-600 hover:bg-sky-50 active:scale-95 font-bold text-xs px-3.5 py-2.5 rounded-2xl shadow-sm flex items-center gap-1.5 transition-all">
+                            <i data-lucide="droplet" class="w-4 h-4 fill-blue-500"></i>
+                            <span>+ 250 ml</span>
+                        </button>
+                    </div>
+                    <!-- Water Progress Bar -->
+                    <div class="mt-3 w-full h-2.5 bg-blue-900/30 rounded-full overflow-hidden">
+                        <div id="water-bar" class="h-full bg-white rounded-full transition-all duration-300" style="width: 60%"></div>
+                    </div>
+                    <div class="flex justify-between items-center mt-2 text-[11px] text-sky-100">
+                        <span id="water-status-text">Yaxshi natija! Yana 3 stakan qoldi.</span>
+                        <button onclick="resetWater()" class="underline opacity-80 hover:opacity-100">Nollash</button>
+                    </div>
+                </div>
+
+                <!-- Goal Selector Pills -->
+                <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-2.5">
+                        <h2 class="text-sm font-bold text-slate-900">Maqsadni tanlang</h2>
+                        <span class="text-[11px] text-slate-400 font-medium">Avto-reja</span>
+                    </div>
+                    <div class="grid grid-cols-3 gap-1.5 bg-slate-100 p-1 rounded-2xl">
+                        <button onclick="setGoal('energy')" id="goal-btn-energy" class="goal-pill py-2 px-2 rounded-xl text-[11px] font-bold transition-all bg-white text-emerald-700 shadow-xs">
+                            ⚡ Sog'lom energiya
+                        </button>
+                        <button onclick="setGoal('weight')" id="goal-btn-weight" class="goal-pill py-2 px-2 rounded-xl text-[11px] font-semibold text-slate-600 hover:text-slate-900 transition-all">
+                            ⚖️ Vazn nazorati
+                        </button>
+                        <button onclick="setGoal('strict')" id="goal-btn-strict" class="goal-pill py-2 px-2 rounded-xl text-[11px] font-semibold text-slate-600 hover:text-slate-900 transition-all">
+                            ⏱️ Aniq rejim
+                        </button>
+                    </div>
+                    <p id="goal-description" class="text-xs text-slate-500 mt-2.5 bg-slate-50 p-2.5 rounded-xl border border-slate-100">
+                        Kun davomida tetiklik va barqaror energiya uchun muvozanatli ovqatlanish jadvali.
+                    </p>
+                </div>
+
+                <!-- Interactive Checklist Timeline -->
+                <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-base font-bold text-slate-900">Kunlik tartib</h3>
+                        <span id="routine-progress-badge" class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700">2 / 6 bajarildi</span>
+                    </div>
+
+                    <div id="routine-list" class="space-y-2.5">
+                        <!-- Rendered dynamically via JS -->
+                    </div>
+
+                    <!-- Add Custom Routine Input -->
+                    <form onsubmit="addCustomRoutine(event)" class="mt-4 pt-3 border-t border-slate-100 flex gap-2">
+                        <input type="time" id="custom-time" value="15:00" required class="w-24 px-2.5 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs font-semibold text-slate-700 focus:outline-none focus:border-emerald-500">
+                        <input type="text" id="custom-task" placeholder="Yangi vazifa (masalan: Sayr qilish)" required class="flex-1 px-3 py-2.5 rounded-xl bg-slate-50 border border-slate-200 text-xs text-slate-800 placeholder:text-slate-400 focus:outline-none focus:border-emerald-500">
+                        <button type="submit" class="px-3.5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs shadow-xs transition-colors">
+                            <i data-lucide="plus" class="w-4 h-4"></i>
+                        </button>
+                    </form>
+                </div>
+
+            </section>
+
+            <!-- ========================================== -->
+            <!-- TAB 3: HISOBOT (DAILY CALORIE REPORT)      -->
+            <!-- ========================================== -->
+            <section id="tab-hisobot" class="hidden space-y-4 animate-fade-in">
+                
+                <!-- Calorie Summary Card with Circular Progress -->
+                <div class="bg-white rounded-3xl p-5 shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-4">
+                        <div>
+                            <h2 class="text-base font-bold text-slate-900">Bugungi kaloriya</h2>
+                            <p class="text-xs text-slate-500" id="report-date-label">Kunlik me'yor nazorati</p>
+                        </div>
+                        <span id="calorie-status-pill" class="text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700">Me'yorda</span>
+                    </div>
+
+                    <div class="flex items-center gap-5">
+                        <!-- SVG Circular Ring -->
+                        <div class="relative w-28 h-28 shrink-0 flex items-center justify-center">
+                            <svg class="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                                <circle cx="50" cy="50" r="42" stroke="#f1f5f9" stroke-width="10" fill="none" />
+                                <circle id="calorie-ring" cx="50" cy="50" r="42" stroke="#10b981" stroke-width="10" stroke-linecap="round" fill="none" stroke-dasharray="263.89" stroke-dashoffset="100" class="transition-all duration-500" />
+                            </svg>
+                            <div class="absolute inset-0 flex flex-col items-center justify-center text-center">
+                                <span id="ring-percent" class="text-lg font-extrabold text-slate-900">0%</span>
+                                <span class="text-[10px] font-medium text-slate-400">bajarildi</span>
+                            </div>
+                        </div>
+
+                        <!-- Numbers Breakdown -->
+                        <div class="flex-1 space-y-2">
+                            <div>
+                                <span class="text-xs text-slate-400 block">Iste'mol qilindi</span>
+                                <span id="consumed-kcal" class="text-2xl font-extrabold text-slate-900">0</span>
+                                <span class="text-xs font-semibold text-slate-500">kkal</span>
+                            </div>
+                            <div class="h-px bg-slate-100 w-full"></div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-slate-500">Kunlik maqsad:</span>
+                                <span id="target-kcal" class="font-bold text-slate-800">2000 kkal</span>
+                            </div>
+                            <div class="flex justify-between text-xs">
+                                <span class="text-slate-500">Qolgan:</span>
+                                <span id="remaining-kcal" class="font-bold text-emerald-600">2000 kkal</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Macro Progress Bars -->
+                    <div class="mt-5 pt-4 border-t border-slate-100 space-y-3">
+                        <!-- Oqsil -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="font-semibold text-slate-700">🥩 Oqsil</span>
+                                <span class="font-bold text-slate-600"><span id="total-protein">0</span> / <span id="target-protein">120</span> g</span>
+                            </div>
+                            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div id="bar-protein" class="h-full bg-rose-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Uglevod -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="font-semibold text-slate-700">🌾 Uglevod</span>
+                                <span class="font-bold text-slate-600"><span id="total-carbs">0</span> / <span id="target-carbs">240</span> g</span>
+                            </div>
+                            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div id="bar-carbs" class="h-full bg-amber-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+
+                        <!-- Yog' -->
+                        <div>
+                            <div class="flex justify-between text-xs mb-1">
+                                <span class="font-semibold text-slate-700">🥑 Yog'</span>
+                                <span class="font-bold text-slate-600"><span id="total-fat">0</span> / <span id="target-fat">65</span> g</span>
+                            </div>
+                            <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                                <div id="bar-fat" class="h-full bg-sky-500 rounded-full transition-all duration-300" style="width: 0%"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Today's Logged Meals List -->
+                <div class="bg-white rounded-3xl p-4 shadow-sm border border-slate-100">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-base font-bold text-slate-900">Bugungi taomlar</h3>
+                        <span id="meals-count-badge" class="text-xs font-semibold text-slate-400">0 ta taom</span>
+                    </div>
+
+                    <div id="logged-meals-list" class="space-y-2.5">
+                        <!-- Populated dynamically -->
+                    </div>
+                </div>
+
+            </section>
+
+        </main>
+
+        <!-- Fixed Bottom Navigation Bar (3 Tabs) -->
+        <nav class="fixed bottom-0 w-full max-w-[390px] bg-white/95 backdrop-blur-md border-t border-slate-200/80 px-3 py-2 flex items-center justify-around z-40">
+            <button onclick="switchTab('tahlil')" id="nav-tahlil" class="nav-btn flex-1 flex flex-col items-center justify-center py-1.5 rounded-2xl text-emerald-600 bg-emerald-50/80 transition-all">
+                <i data-lucide="scan-line" class="w-5 h-5 mb-0.5"></i>
+                <span class="text-[11px] font-bold">Tahlil</span>
+            </button>
+
+            <button onclick="switchTab('tartib')" id="nav-tartib" class="nav-btn flex-1 flex flex-col items-center justify-center py-1.5 rounded-2xl text-slate-500 hover:text-slate-800 transition-all">
+                <i data-lucide="calendar-check-2" class="w-5 h-5 mb-0.5"></i>
+                <span class="text-[11px] font-semibold">Kunlik Tartib</span>
+            </button>
+
+            <button onclick="switchTab('hisobot')" id="nav-hisobot" class="nav-btn flex-1 flex flex-col items-center justify-center py-1.5 rounded-2xl text-slate-500 hover:text-slate-800 transition-all">
+                <i data-lucide="pie-chart" class="w-5 h-5 mb-0.5"></i>
+                <span class="text-[11px] font-semibold">Hisobot</span>
+            </button>
+        </nav>
+
+    </div>
+
+    <script>
+        // =========================================================================
+        // 1. TELEGRAM WEBAPP SDK INITIALIZATION & FALLBACK
+        // =========================================================================
+        const tg = window.Telegram && window.Telegram.WebApp ? window.Telegram.WebApp : null;
+
+        function initTelegram() {
+            if (tg) {
+                try {
+                    tg.ready();
+                    tg.expand();
+                    // Match header color cleanly
+                    if (tg.setHeaderColor) tg.setHeaderColor('#ffffff');
+                    if (tg.setBackgroundColor) tg.setBackgroundColor('#F8FAFC');
+
+                    // Personalize greeting if Telegram user data is available
+                    const user = tg.initDataUnsafe && tg.initDataUnsafe.user;
+                    if (user && user.first_name) {
+                        document.getElementById('user-greeting').textContent = `Salom, ${user.first_name}!`;
+                    }
+                } catch (e) {
+                    console.warn('Telegram WebApp SDK fallback mode:', e);
+                }
+            }
+        }
+
+        function triggerHaptic(type = 'light') {
+            if (tg && tg.HapticFeedback) {
+                try {
+                    if (type === 'success') {
+                        tg.HapticFeedback.notificationOccurred('success');
+                    } else {
+                        tg.HapticFeedback.impactOccurred(type);
+                    }
+                } catch (e) {}
+            }
+        }
+
+        // =========================================================================
+        // 2. DATA MODELS & PRESETS (UZBEK)
+        // =========================================================================
+        const MEAL_PRESETS = {
+            avocado_toast: {
+                name: "Tuxum va avokado tosti",
+                category: "Nonushta",
+                portion: "Taxminiy porsiya: ~260 g (2 dona tost, 1 tuxum, yarim avokado)",
+                kcal: 420,
+                protein: 21,
+                carbs: 34,
+                fat: 22,
+                score: 9.2,
+                emoji: "🥑",
+                benefits: [
+                    "Tuxum tarkibidagi yuqori sifatli oqsil mushaklarni quvvatlaydi va uzoq vaqt to'q tutadi.",
+                    "Avokadodagi foydali omega yog'lari miya faoliyati va yurak salomatligini yaxshilaydi.",
+                    "Javdar noni sekin hazm bo'luvchi uglevod berib, kun bo'yi barqaror energiya ta'minlaydi."
+                ]
+            },
+            oatmeal: {
+                name: "Suli bo'tqasi va mevalar",
+                category: "Nonushta",
+                portion: "Taxminiy porsiya: ~300 g (suli yormasi, banan, rezavorlar)",
+                kcal: 360,
+                protein: 12,
+                carbs: 62,
+                fat: 7,
+                score: 9.0,
+                emoji: "🥣",
+                benefits: [
+                    "Kletchatkaga boy bo'lib, ovqat hazm qilish tizimini a'lo darajada ishlatadi.",
+                    "Mevalar organizmni tabiiy vitaminlar va antioksidantlar bilan boyitadi.",
+                    "Qondagi qand miqdorini keskin oshirmasdan ertalabki tetiklikni beradi."
+                ]
+            },
+            cottage_cheese: {
+                name: "Tvorog va tabiiy asal",
+                category: "Nonushta",
+                portion: "Taxminiy porsiya: ~220 g (5% tvorog, 1 choy qoshiq asal, yong'oq)",
+                kcal: 330,
+                protein: 28,
+                carbs: 22,
+                fat: 14,
+                score: 8.8,
+                emoji: "🍯",
+                benefits: [
+                    "Kalsiy va oqsilga juda boy — suyaklar va tishlar mustahkamligi uchun foydali.",
+                    "Asal tabiiy energiya manbai bo'lib, immunitetni qo'llab-quvvatlaydi.",
+                    "Kam kaloriyali bo'lishiga qaramay tushlikkacha ochlik hissini yo'qotadi."
+                ]
+            }
+        };
+
+        // Custom photo simulated pool for uploaded images
+        const CUSTOM_UPLOAD_ANALYSES = [
+            {
+                name: "Uy sharoitidagi muvozanatli taom",
+                category: "Nonushta / Taom",
+                portion: "Taxminiy porsiya: ~320 g (rasm asosida aniqlandi)",
+                kcal: 465,
+                protein: 24,
+                carbs: 48,
+                fat: 18,
+                score: 8.5,
+                emoji: "🍽️",
+                benefits: [
+                    "Oqsil va uglevodlar nisbati kunlik energiya zaxirasini tiklashga yordam beradi.",
+                    "Sabzavot va tabiiy mahsulotlar hazm qilish jarayonini yengillashtiradi.",
+                    "Ortiqcha shakar va zararli trans-yog'lardan xoli foydali tanlov."
+                ]
+            },
+            {
+                name: "Oqsilga boy energiya nonushtasi",
+                category: "Nonushta",
+                portion: "Taxminiy porsiya: ~280 g (rasm asosida aniqlandi)",
+                kcal: 410,
+                protein: 26,
+                carbs: 38,
+                fat: 16,
+                score: 8.9,
+                emoji: "🥗",
+                benefits: [
+                    "Ertalabki moddalar almashinuvini (metabolizm) faollashtiradi.",
+                    "Kun davomida diqqatni jamlash va charchoqni kamaytirishga xizmat qiladi.",
+                    "Organizm uchun zarur mikroelementlar va vitaminlarga boy."
+                ]
+            }
+        ];
+
+        const GOAL_CONFIGS = {
+            energy: {
+                title: "Sog'lom energiya",
+                desc: "Kun davomida tetiklik va barqaror energiya uchun muvozanatli ovqatlanish jadvali.",
+                targetKcal: 2000,
+                protein: 120,
+                carbs: 240,
+                fat: 65,
+                tasks: [
+                    { id: 't1', time: '07:30', title: "1 stakan iliq suv va uyg'onish", done: true },
+                    { id: 't2', time: '08:00', title: "Foydali nonushta (Oqsil + murakkab uglevod)", done: true },
+                    { id: 't3', time: '13:00', title: "To'yimli tushlik va ko'katli salat", done: false },
+                    { id: 't4', time: '16:30', title: "Yengil tamaddi (Meva yoki yong'oq)", done: false },
+                    { id: 't5', time: '19:00', title: "Yengil kechki ovqat", done: false },
+                    { id: 't6', time: '22:30', title: "Telefonsiz dam olish va uyquga tayyorgarlik", done: false }
+                ]
+            },
+            weight: {
+                title: "Vazn nazorati",
+                desc: "Ortiqcha kaloriyasiz, oqsil va kletchatkaga boy vazn boshqaruvi rejasi.",
+                targetKcal: 1650,
+                protein: 130,
+                carbs: 160,
+                fat: 52,
+                tasks: [
+                    { id: 'w1', time: '07:30', title: "2 stakan toza suv ichish", done: true },
+                    { id: 'w2', time: '08:30', title: "Oqsilga boy nonushta (Shakarsiz)", done: false },
+                    { id: 'w3', time: '13:00', title: "Tushlik: Yarim tarelkada sabzavotlar", done: false },
+                    { id: 'w4', time: '16:30', title: "Yashil choy va kefir/tvorog", done: false },
+                    { id: 'w5', time: '18:30', title: "Kechki ovqat (Uglevodlarsiz yengil taom)", done: false },
+                    { id: 'w6', time: '21:00', title: "30 daqiqa piyoda sayr qilish", done: false }
+                ]
+            },
+            strict: {
+                title: "Aniq rejim",
+                desc: "Soatbay intizom, o'z vaqtida ovqatlanish va suv balansini qat'iy ushlash.",
+                targetKcal: 2100,
+                protein: 135,
+                carbs: 250,
+                fat: 62,
+                tasks: [
+                    { id: 's1', time: '07:00', title: "Uyg'onish, suv va 10 daqiqa badantarbiya", done: true },
+                    { id: 's2', time: '08:00', title: "Nonushta (Aniq belgilangan vaqtda)", done: true },
+                    { id: 's3', time: '12:30', title: "Tushlik va 500 ml suv", done: false },
+                    { id: 's4', time: '16:00', title: "Ikkinchi tamaddi va ko'z mashqlari", done: false },
+                    { id: 's5', time: '19:00', title: "Kechki ovqat (Uyqudan 3.5 soat oldin)", done: false },
+                    { id: 's6', time: '22:30', title: "Soat 22:30 da uyquga yotish", done: false }
+                ]
+            }
+        };
+
+        // =========================================================================
+        // 3. STATE MANAGEMENT (LOCALSTORAGE PERSISTENCE)
+        // =========================================================================
+        const STORAGE_KEY = 'dayai_miniapp_state_v1';
+
+        let appState = {
+            goal: 'energy',
+            waterLiters: 1.25,
+            tasks: [],
+            loggedMeals: [
+                {
+                    id: 'init_1',
+                    name: 'Tuxum va avokado tosti',
+                    category: 'Nonushta',
+                    time: '08:15',
+                    kcal: 420,
+                    protein: 21,
+                    carbs: 34,
+                    fat: 22,
+                    emoji: '🥑'
+                }
+            ],
+            streak: 3
+        };
+
+        let currentAnalyzedMeal = null;
+
+        function loadState() {
+            try {
+                const saved = localStorage.getItem(STORAGE_KEY);
+                if (saved) {
+                    const parsed = JSON.parse(saved);
+                    appState = { ...appState, ...parsed };
+                } else {
+                    // Initialize default tasks from default goal
+                    appState.tasks = JSON.parse(JSON.stringify(GOAL_CONFIGS.energy.tasks));
+                }
+            } catch (e) {
+                console.error('LocalStorage o\'qishda xatolik:', e);
+                appState.tasks = JSON.parse(JSON.stringify(GOAL_CONFIGS.energy.tasks));
+            }
+        }
+
+        function saveState() {
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(appState));
+            } catch (e) {
+                console.error('LocalStorage saqlashda xatolik:', e);
+            }
+        }
+
+        // =========================================================================
+        // 4. UI NAVIGATION & TOAST SYSTEM
+        // =========================================================================
+        function switchTab(tabName) {
+            triggerHaptic('light');
+            const tabs = ['tahlil', 'tartib', 'hisobot'];
+            tabs.forEach(t => {
+                const section = document.getElementById(`tab-${t}`);
+                const navBtn = document.getElementById(`nav-${t}`);
+                if (t === tabName) {
+                    section.classList.remove('hidden');
+                    navBtn.classList.add('text-emerald-600', 'bg-emerald-50/80', 'font-bold');
+                    navBtn.classList.remove('text-slate-500');
+                } else {
+                    section.classList.add('hidden');
+                    navBtn.classList.remove('text-emerald-600', 'bg-emerald-50/80', 'font-bold');
+                    navBtn.classList.add('text-slate-500');
+                }
+            });
+
+            if (tabName === 'hisobot') {
+                renderReportTab();
+            } else if (tabName === 'tartib') {
+                renderRoutineTab();
+            }
+        }
+
+        let toastTimer = null;
+        function showToast(message, icon = '✅') {
+            const banner = document.getElementById('toast-banner');
+            document.getElementById('toast-message').textContent = message;
+            document.getElementById('toast-icon').textContent = icon;
+
+            banner.classList.remove('opacity-0', '-translate-y-2');
+            banner.classList.add('opacity-100', 'translate-y-0');
+
+            if (toastTimer) clearTimeout(toastTimer);
+            toastTimer = setTimeout(() => {
+                banner.classList.add('opacity-0', '-translate-y-2');
+                banner.classList.remove('opacity-100', 'translate-y-0');
+            }, 2600);
+        }
+
+        // =========================================================================
+        // 5. TAB 1 LOGIC: MEAL PHOTO ANALYZER
+        // =========================================================================
+        function handleImageUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            triggerHaptic('medium');
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const imgUrl = e.target.result;
+                startScanningAnimation(imgUrl, () => {
+                    // Pick a realistic analysis result
+                    const randomResult = CUSTOM_UPLOAD_ANALYSES[Math.floor(Math.random() * CUSTOM_UPLOAD_ANALYSES.length)];
+                    displayAnalysisResult(randomResult);
+                });
+            };
+            reader.readAsDataURL(file);
+        }
+
+        function runPresetAnalysis(presetKey) {
+            triggerHaptic('light');
+            const preset = MEAL_PRESETS[presetKey];
+            if (!preset) return;
+
+            // Create a clean SVG data placeholder visual for preset preview
+            const svgGraphic = `data:image/svg+xml;utf8,${encodeURIComponent(`
+                <svg xmlns="http://www.w3.org/2000/svg" width="400" height="220" viewBox="0 0 400 220">
+                    <defs>
+                        <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                            <stop offset="0%" stop-color="#dcfce7"/>
+                            <stop offset="100%" stop-color="#e0f2fe"/>
+                        </linearGradient>
+                    </defs>
+                    <rect width="400" height="220" fill="url(#g)"/>
+                    <text x="200" y="105" font-size="64" text-anchor="middle">${preset.emoji}</text>
+                    <text x="200" y="150" font-family="sans-serif" font-size="16" font-weight="bold" fill="#0f172a" text-anchor="middle">${preset.name}</text>
+                </svg>
+            `)}`;
+
+            startScanningAnimation(svgGraphic, () => {
+                displayAnalysisResult(preset);
+            });
+        }
+
+        function startScanningAnimation(imageSrc, onComplete) {
+            const placeholder = document.getElementById('upload-placeholder');
+            const previewContainer = document.getElementById('preview-container');
+            const previewImg = document.getElementById('meal-preview-img');
+            const scanningOverlay = document.getElementById('scanning-overlay');
+            const resultCard = document.getElementById('analysis-result-card');
+
+            placeholder.classList.add('hidden');
+            previewContainer.classList.remove('hidden');
+            previewImg.src = imageSrc;
+            scanningOverlay.classList.remove('hidden');
+            resultCard.classList.add('hidden');
+
+            setTimeout(() => {
+                scanningOverlay.classList.add('hidden');
+                triggerHaptic('success');
+                onComplete();
+            }, 1300);
+        }
+
+        function displayAnalysisResult(data) {
+            currentAnalyzedMeal = data;
+            document.getElementById('res-category').textContent = data.category;
+            document.getElementById('res-meal-name').textContent = data.name;
+            document.getElementById('res-portion').textContent = data.portion;
+            document.getElementById('res-kcal').textContent = data.kcal;
+            document.getElementById('res-carbs').textContent = data.carbs;
+            document.getElementById('res-protein').textContent = data.protein;
+            document.getElementById('res-fat').textContent = data.fat;
+
+            document.getElementById('res-score-text').textContent = `${data.score.toFixed(1)} / 10`;
+            document.getElementById('res-score-bar').style.width = `${data.score * 10}%`;
+
+            const benefitsList = document.getElementById('res-benefits');
+            benefitsList.innerHTML = data.benefits.map(b => `
+                <li class="flex items-start gap-2">
+                    <span class="text-emerald-600 font-bold mt-0.5">✓</span>
+                    <span>${b}</span>
+                </li>
+            `).join('');
+
+            const addBtn = document.getElementById('add-meal-btn');
+            addBtn.disabled = false;
+            addBtn.innerHTML = `<i data-lucide="plus-circle" class="w-4 h-4"></i><span>Kunlik hisobga qo'shish</span>`;
+            addBtn.classList.remove('bg-slate-400');
+
+            document.getElementById('analysis-result-card').classList.remove('hidden');
+            lucide.createIcons();
+        }
+
+        function resetAnalyzer() {
+            document.getElementById('upload-placeholder').classList.remove('hidden');
+            document.getElementById('preview-container').classList.add('hidden');
+            document.getElementById('analysis-result-card').classList.add('hidden');
+            document.getElementById('meal-file-input').value = '';
+            currentAnalyzedMeal = null;
+        }
+
+        function addAnalyzedMealToLog() {
+            if (!currentAnalyzedMeal) return;
+            triggerHaptic('success');
+
+            const now = new Date();
+            const timeStr = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`;
+
+            appState.loggedMeals.unshift({
+                id: 'meal_' + Date.now(),
+                name: currentAnalyzedMeal.name,
+                category: currentAnalyzedMeal.category,
+                time: timeStr,
+                kcal: currentAnalyzedMeal.kcal,
+                protein: currentAnalyzedMeal.protein,
+                carbs: currentAnalyzedMeal.carbs,
+                fat: currentAnalyzedMeal.fat,
+                emoji: currentAnalyzedMeal.emoji || '🥗'
+            });
+
+            saveState();
+            renderReportTab();
+            showToast(`"${currentAnalyzedMeal.name}" hisobotga qo'shildi!`, '🔥');
+
+            const addBtn = document.getElementById('add-meal-btn');
+            addBtn.disabled = true;
+            addBtn.innerHTML = `<i data-lucide="check" class="w-4 h-4"></i><span>Qo'shildi</span>`;
+            lucide.createIcons();
+        }
+
+        // =========================================================================
+        // 6. TAB 2 LOGIC: DAILY ROUTINE & WATER TRACKER
+        // =========================================================================
+        function addWater(amount) {
+            triggerHaptic('light');
+            appState.waterLiters = Math.min(4.0, +(appState.waterLiters + amount).toFixed(2));
+            saveState();
+            renderWaterWidget();
+            showToast(`+250 ml suv qo'shildi! Jami: ${appState.waterLiters} L`, '💧');
+        }
+
+        function resetWater() {
+            triggerHaptic('light');
+            appState.waterLiters = 0;
+            saveState();
+            renderWaterWidget();
+        }
+
+        function renderWaterWidget() {
+            const target = 2.0;
+            const current = appState.waterLiters;
+            const pct = Math.min(100, Math.round((current / target) * 100));
+
+            document.getElementById('water-current').textContent = current.toFixed(2).replace(/\.00$/, '.0');
+            document.getElementById('water-bar').style.width = `${pct}%`;
+
+            const statusEl = document.getElementById('water-status-text');
+            if (current >= target) {
+                statusEl.textContent = "Ajoyib! Kunlik suv me'yori bajarildi 🎉";
+            } else {
+                const remGlasses = Math.ceil((target - current) / 0.25);
+                statusEl.textContent = `Yaxshi natija! Yana ${remGlasses} stakan qoldi.`;
+            }
+        }
+
+        function setGoal(goalKey) {
+            triggerHaptic('medium');
+            if (!GOAL_CONFIGS[goalKey]) return;
+            appState.goal = goalKey;
+            appState.tasks = JSON.parse(JSON.stringify(GOAL_CONFIGS[goalKey].tasks));
+            saveState();
+            renderRoutineTab();
+            renderReportTab();
+            showToast(`Maqsad o'zgartirildi: ${GOAL_CONFIGS[goalKey].title}`, '🎯');
+        }
+
+        function toggleTask(taskId) {
+            triggerHaptic('light');
+            const task = appState.tasks.find(t => t.id === taskId);
+            if (task) {
+                task.done = !task.done;
+                saveState();
+                renderRoutineTab();
+            }
+        }
+
+        function addCustomRoutine(e) {
+            e.preventDefault();
+            const timeInput = document.getElementById('custom-time');
+            const taskInput = document.getElementById('custom-task');
+            const title = taskInput.value.trim();
+            if (!title) return;
+
+            triggerHaptic('success');
+            appState.tasks.push({
+                id: 'custom_' + Date.now(),
+                time: timeInput.value || '15:00',
+                title: title,
+                done: false
+            });
+
+            // Sort tasks chronologically by time
+            appState.tasks.sort((a, b) => a.time.localeCompare(b.time));
+            taskInput.value = '';
+            saveState();
+            renderRoutineTab();
+            showToast("Yangi vazifa tartibga qo'shildi", '📅');
+        }
+
+        function renderRoutineTab() {
+            renderWaterWidget();
+
+            // Update Goal Pills UI
+            ['energy', 'weight', 'strict'].forEach(key => {
+                const btn = document.getElementById(`goal-btn-${key}`);
+                if (key === appState.goal) {
+                    btn.classList.add('bg-white', 'text-emerald-700', 'font-bold', 'shadow-xs');
+                    btn.classList.remove('text-slate-600', 'font-semibold');
+                } else {
+                    btn.classList.remove('bg-white', 'text-emerald-700', 'font-bold', 'shadow-xs');
+                    btn.classList.add('text-slate-600', 'font-semibold');
+                }
+            });
+
+            document.getElementById('goal-description').textContent = GOAL_CONFIGS[appState.goal].desc;
+
+            // Render Tasks
+            const listEl = document.getElementById('routine-list');
+            const doneCount = appState.tasks.filter(t => t.done).length;
+            document.getElementById('routine-progress-badge').textContent = `${doneCount} / ${appState.tasks.length} bajarildi`;
+
+            listEl.innerHTML = appState.tasks.map(task => `
+                <div onclick="toggleTask('${task.id}')" class="cursor-pointer flex items-center gap-3 p-3 rounded-2xl border transition-all ${task.done ? 'bg-emerald-50/50 border-emerald-200/70' : 'bg-slate-50/70 border-slate-100 hover:border-slate-200'}">
+                    <div class="w-5 h-5 rounded-lg flex items-center justify-center shrink-0 transition-colors ${task.done ? 'bg-emerald-500 text-white' : 'bg-white border-2 border-slate-300'}">
+                        ${task.done ? '<svg class="w-3.5 h-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>' : ''}
+                    </div>
+                    <span class="text-xs font-extrabold px-2 py-1 rounded-lg ${task.done ? 'bg-emerald-100/80 text-emerald-800' : 'bg-white text-slate-700 border border-slate-200/70'}">${task.time}</span>
+                    <span class="text-xs font-medium flex-1 ${task.done ? 'line-through text-slate-400' : 'text-slate-800'}">${task.title}</span>
+                </div>
+            `).join('');
+        }
+
+        // =========================================================================
+        // 7. TAB 3 LOGIC: DAILY REPORT & LOGGED MEALS
+        // =========================================================================
+        function deleteLoggedMeal(mealId) {
+            triggerHaptic('medium');
+            appState.loggedMeals = appState.loggedMeals.filter(m => m.id !== mealId);
+            saveState();
+            renderReportTab();
+            showToast("Taom ro'yxatdan o'chirildi", '🗑️');
+        }
+
+        function renderReportTab() {
+            const config = GOAL_CONFIGS[appState.goal];
+            const totals = appState.loggedMeals.reduce((acc, item) => {
+                acc.kcal += item.kcal;
+                acc.protein += item.protein;
+                acc.carbs += item.carbs;
+                acc.fat += item.fat;
+                return acc;
+            }, { kcal: 0, protein: 0, carbs: 0, fat: 0 });
+
+            const targetKcal = config.targetKcal;
+            const remaining = Math.max(0, targetKcal - totals.kcal);
+            const pct = Math.min(100, Math.round((totals.kcal / targetKcal) * 100));
+
+            // Update Numbers
+            document.getElementById('consumed-kcal').textContent = totals.kcal;
+            document.getElementById('target-kcal').textContent = `${targetKcal} kkal`;
+            document.getElementById('remaining-kcal').textContent = `${remaining} kkal`;
+            document.getElementById('ring-percent').textContent = `${pct}%`;
+
+            // Status Pill
+            const statusPill = document.getElementById('calorie-status-pill');
+            if (totals.kcal > targetKcal) {
+                statusPill.textContent = "Me'yordan oshdi";
+                statusPill.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-amber-100 text-amber-800";
+            } else {
+                statusPill.textContent = "Me'yorda";
+                statusPill.className = "text-xs font-bold px-2.5 py-1 rounded-full bg-emerald-50 text-emerald-700";
+            }
+
+            // SVG Ring Calculation (Circumference = 2 * PI * 42 ≈ 263.89)
+            const circumference = 263.89;
+            const offset = circumference - (pct / 100) * circumference;
+            const ringEl = document.getElementById('calorie-ring');
+            ringEl.style.strokeDashoffset = offset;
+            ringEl.style.stroke = totals.kcal > targetKcal ? '#f59e0b' : '#10b981';
+
+            // Macro Bars
+            document.getElementById('total-protein').textContent = totals.protein;
+            document.getElementById('target-protein').textContent = config.protein;
+            document.getElementById('bar-protein').style.width = `${Math.min(100, (totals.protein / config.protein) * 100)}%`;
+
+            document.getElementById('total-carbs').textContent = totals.carbs;
+            document.getElementById('target-carbs').textContent = config.carbs;
+            document.getElementById('bar-carbs').style.width = `${Math.min(100, (totals.carbs / config.carbs) * 100)}%`;
+
+            document.getElementById('total-fat').textContent = totals.fat;
+            document.getElementById('target-fat').textContent = config.fat;
+            document.getElementById('bar-fat').style.width = `${Math.min(100, (totals.fat / config.fat) * 100)}%`;
+
+            // Logged Meals List
+            const mealsListEl = document.getElementById('logged-meals-list');
+            document.getElementById('meals-count-badge').textContent = `${appState.loggedMeals.length} ta taom`;
+
+            if (appState.loggedMeals.length === 0) {
+                mealsListEl.innerHTML = `
+                    <div class="text-center py-6 px-4 bg-slate-50 rounded-2xl border border-dashed border-slate-200">
+                        <p class="text-xs font-semibold text-slate-500">Hali taom qo'shilmagan</p>
+                        <button onclick="switchTab('tahlil')" class="mt-2 text-xs font-bold text-emerald-600 underline">+ Tahlil bo'limidan qo'shish</button>
+                    </div>
+                `;
+            } else {
+                mealsListEl.innerHTML = appState.loggedMeals.map(meal => `
+                    <div class="flex items-center justify-between p-3 rounded-2xl bg-slate-50 border border-slate-100">
+                        <div class="flex items-center gap-3 min-w-0">
+                            <div class="w-10 h-10 rounded-xl bg-white shadow-xs flex items-center justify-center text-lg shrink-0">
+                                ${meal.emoji}
+                            </div>
+                            <div class="truncate">
+                                <h4 class="text-xs font-bold text-slate-900 truncate">${meal.name}</h4>
+                                <div class="flex items-center gap-2 text-[11px] text-slate-500 mt-0.5">
+                                    <span>${meal.time}</span>
+                                    <span>•</span>
+                                    <span class="font-bold text-emerald-600">${meal.kcal} kkal</span>
+                                    <span>•</span>
+                                    <span>${meal.protein}g oqsil</span>
+                                </div>
+                            </div>
+                        </div>
+                        <button onclick="deleteLoggedMeal('${meal.id}')" class="p-2 text-slate-400 hover:text-rose-500 transition-colors shrink-0" title="O'chirish">
+                            <i data-lucide="trash-2" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                `).join('');
+            }
+
+            lucide.createIcons();
+        }
+
+        // =========================================================================
+        // 8. INITIALIZE ON WINDOW LOAD
+        // =========================================================================
+        window.onload = function() {
+            initTelegram();
+            loadState();
+            renderRoutineTab();
+            renderReportTab();
+            lucide.createIcons();
+        };
+    </script>
+</body>
+</html>
